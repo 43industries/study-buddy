@@ -1,0 +1,10 @@
+{
+  "name": "Study Buddy",
+  "short_name": "Study Buddy",
+  "description": "Timetable, assignments, focus, study rooms",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0e",
+  "theme_color": "#16161a",
+  "icons": []
+}

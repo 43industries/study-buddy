@@ -1,7 +1,6 @@
 (() => {
   const STORAGE_KEY = "studyBuddy.v1";
   const RING_R = 26;
-  const CIRC = 2 * Math.PI * RING_R;
 
   const quotes = [
     "Small steps every day beat perfect plans on paper.",
@@ -23,6 +22,11 @@
       assignments: [],
       reminders: [],
       stats: { weekId: "", sessionsThisWeek: 0 },
+      settings: {
+        notifyAssignments: true,
+        notifyClasses: true,
+        notifyReminders: true,
+      },
     };
   }
 
@@ -31,7 +35,13 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
-      return { ...defaultState(), ...parsed, profile: { ...defaultState().profile, ...parsed.profile }, stats: { ...defaultState().stats, ...parsed.stats } };
+      return {
+        ...defaultState(),
+        ...parsed,
+        profile: { ...defaultState().profile, ...parsed.profile },
+        stats: { ...defaultState().stats, ...parsed.stats },
+        settings: { ...defaultState().settings, ...(parsed.settings || {}) },
+      };
     } catch {
       return defaultState();
     }
@@ -100,7 +110,7 @@
       else btn.removeAttribute("aria-current");
     });
     const fab = document.getElementById("fab");
-    if (fab) fab.hidden = view === "focus" || view === "stats";
+    if (fab) fab.hidden = view === "focus" || view === "stats" || view === "rooms";
   }
 
   function greeting() {
@@ -234,7 +244,11 @@
       [...auto, ...manual].forEach((r) => {
         const li = document.createElement("li");
         li.className = "reminder-item";
-        li.innerHTML = `<span>${escapeHtml(r.text)}</span>${r.auto ? "" : `<button type="button" class="btn-icon" data-rid="${r.id}" aria-label="Remove">×</button>`}`;
+        const when =
+          !r.auto && r.notifyAt
+            ? ` · 🔔 ${new Date(r.notifyAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}`
+            : "";
+        li.innerHTML = `<span>${escapeHtml(r.text)}${when}</span>${r.auto ? "" : `<button type="button" class="btn-icon" data-rid="${r.id}" aria-label="Remove">×</button>`}`;
         reminderList.appendChild(li);
       });
       reminderList.querySelectorAll("[data-rid]").forEach((btn) => {
@@ -271,6 +285,225 @@
     const d = document.createElement("div");
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  const NOTIFY_PREFIX = "studyBuddy.notify.";
+
+  function notifyDedupeKey(key) {
+    return NOTIFY_PREFIX + key;
+  }
+
+  function hasNotified(key) {
+    try {
+      return sessionStorage.getItem(notifyDedupeKey(key)) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function setNotified(key) {
+    try {
+      sessionStorage.setItem(notifyDedupeKey(key), "1");
+    } catch (_) {}
+  }
+
+  async function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return null;
+    try {
+      return await navigator.serviceWorker.register(new URL("sw.js", window.location.href), { scope: "./" });
+    } catch {
+      try {
+        return await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+      } catch (e) {
+        console.warn("Service worker registration failed", e);
+        return null;
+      }
+    }
+  }
+
+  async function pushNotification(title, body, tag) {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const t = tag || "study-buddy-" + String(Date.now());
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.active) {
+        reg.active.postMessage({ type: "SHOW_NOTIFICATION", title, body, tag: t });
+        return;
+      }
+    } catch (_) {}
+    try {
+      new Notification(title, { body, tag: t });
+    } catch (_) {}
+  }
+
+  function runNotificationScan() {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const s = state.settings || {};
+    const now = new Date();
+
+    if (s.notifyAssignments) {
+      state.assignments
+        .filter((a) => a.progress < 100)
+        .forEach((a) => {
+          const d = daysUntil(a.due);
+          const keyDue = `a-${a.id}-due-${todayStr()}`;
+          const keyDue1 = `a-${a.id}-due1-${todayStr()}`;
+          if (d === 0 && now.getHours() >= 7 && !hasNotified(keyDue)) {
+            setNotified(keyDue);
+            pushNotification("Due today", a.title, keyDue);
+          }
+          if (d === 1 && now.getHours() >= 8 && !hasNotified(keyDue1)) {
+            setNotified(keyDue1);
+            pushNotification("Due tomorrow", a.title, keyDue1);
+          }
+        });
+    }
+
+    if (s.notifyReminders) {
+      state.reminders.forEach((r) => {
+        if (!r.notifyAt) return;
+        const ts = new Date(r.notifyAt).getTime();
+        if (Number.isNaN(ts)) return;
+        const key = `r-${r.id}-fired`;
+        if (hasNotified(key)) return;
+        const delta = now.getTime() - ts;
+        if (delta >= 0 && delta < 5 * 60 * 1000) {
+          setNotified(key);
+          pushNotification("Reminder", r.text, key);
+        }
+      });
+    }
+
+    if (s.notifyClasses) {
+      const dow = now.getDay();
+      const dayIndex = dow === 0 ? 6 : dow - 1;
+      state.timetable
+        .filter((slot) => slot.day === dayIndex)
+        .forEach((slot) => {
+          const [sh, sm] = slot.start.split(":").map(Number);
+          const start = new Date(now);
+          start.setHours(sh, sm, 0, 0);
+          const minUntil = (start.getTime() - now.getTime()) / 60000;
+          const key = `slot-${slot.id}-${todayStr()}`;
+          if (minUntil >= 25 && minUntil <= 35 && !hasNotified(key)) {
+            setNotified(key);
+            pushNotification("Class soon", `${slot.title} starts in ~30 minutes`, key);
+          }
+        });
+    }
+  }
+
+  function updateNotifyUI() {
+    const status = document.getElementById("notify-status");
+    if (!status) return;
+    if (typeof Notification === "undefined") {
+      status.textContent = "Status: not supported in this browser";
+      return;
+    }
+    if (Notification.permission === "granted") status.textContent = "Status: enabled";
+    else if (Notification.permission === "denied") status.textContent = "Status: blocked — allow notifications in browser settings";
+    else status.textContent = "Status: not requested — tap Enable alerts";
+
+    const sett = state.settings || {};
+    const na = document.getElementById("notify-assignments");
+    const nc = document.getElementById("notify-classes");
+    const nr = document.getElementById("notify-reminders");
+    if (na) na.checked = sett.notifyAssignments !== false;
+    if (nc) nc.checked = sett.notifyClasses !== false;
+    if (nr) nr.checked = sett.notifyReminders !== false;
+  }
+
+  async function bindNotifyUI() {
+    await registerServiceWorker();
+    updateNotifyUI();
+
+    document.getElementById("btn-enable-notify")?.addEventListener("click", async () => {
+      if (typeof Notification === "undefined") return;
+      await Notification.requestPermission();
+      updateNotifyUI();
+      runNotificationScan();
+    });
+
+    document.getElementById("notify-assignments")?.addEventListener("change", (e) => {
+      if (!state.settings) return;
+      state.settings.notifyAssignments = e.target.checked;
+      save();
+    });
+    document.getElementById("notify-classes")?.addEventListener("change", (e) => {
+      if (!state.settings) return;
+      state.settings.notifyClasses = e.target.checked;
+      save();
+    });
+    document.getElementById("notify-reminders")?.addEventListener("change", (e) => {
+      if (!state.settings) return;
+      state.settings.notifyReminders = e.target.checked;
+      save();
+    });
+  }
+
+  function sanitizeRoomName(raw) {
+    const s = String(raw || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    return (s || "study-room").slice(0, 40);
+  }
+
+  function jitsiUrl(room) {
+    return `https://meet.jit.si/${encodeURIComponent(room)}#config.prejoinPageEnabled=false`;
+  }
+
+  function bindRooms() {
+    const input = document.getElementById("room-name");
+    const modal = document.getElementById("room-modal");
+    const iframe = document.getElementById("room-iframe");
+
+    const close = () => {
+      if (iframe) iframe.removeAttribute("src");
+      if (modal) {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+      }
+    };
+
+    document.getElementById("btn-random-room")?.addEventListener("click", () => {
+      if (input) input.value = sanitizeRoomName(`study-${Math.random().toString(36).slice(2, 10)}`);
+    });
+
+    document.getElementById("btn-join-room")?.addEventListener("click", () => {
+      const room = sanitizeRoomName(input?.value || "");
+      if (input) input.value = room;
+      if (iframe && modal) {
+        iframe.src = jitsiUrl(room);
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+      }
+    });
+
+    document.getElementById("room-modal-close")?.addEventListener("click", close);
+    document.getElementById("room-modal-backdrop")?.addEventListener("click", close);
+
+    document.getElementById("btn-copy-room")?.addEventListener("click", async () => {
+      const room = sanitizeRoomName(input?.value || "study-room");
+      const url = jitsiUrl(room).split("#")[0];
+      const btn = document.getElementById("btn-copy-room");
+      try {
+        await navigator.clipboard.writeText(url);
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => {
+            btn.textContent = prev;
+          }, 1600);
+        }
+      } catch {
+        window.prompt("Copy this link:", url);
+      }
+    });
+
+    if (input && !input.value) input.value = sanitizeRoomName(`study-${Math.random().toString(36).slice(2, 8)}`);
   }
 
   function renderSchedule() {
@@ -461,6 +694,11 @@
   updateClock();
   setInterval(updateClock, 30000);
 
+  bindNotifyUI();
+  bindRooms();
+  setInterval(runNotificationScan, 45 * 1000);
+  runNotificationScan();
+
   document.querySelectorAll(".bottom-nav .nav-item").forEach((btn) => {
     btn.addEventListener("click", () => showView(btn.dataset.view));
   });
@@ -509,7 +747,13 @@
     const fd = new FormData(e.target);
     const text = String(fd.get("text") || "").trim();
     if (!text) return;
-    state.reminders.push({ id: id(), text });
+    const notifyAtRaw = String(fd.get("notifyAt") || "").trim();
+    let notifyAt = null;
+    if (notifyAtRaw) {
+      const d = new Date(notifyAtRaw);
+      if (!Number.isNaN(d.getTime())) notifyAt = d.toISOString();
+    }
+    state.reminders.push({ id: id(), text, notifyAt });
     save();
     e.target.reset();
     renderHome();

@@ -2,6 +2,12 @@
 [build]
   publish = "web"
 
+# Service worker should update when changed
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 # Optional: long-cache for hashed assets later; safe defaults for static HTML
 [[headers]]
   for = "/*"

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Study Buddy — timetable, assignments, focus timer, reminders." />
     <title>Study Buddy</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#16161a" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -48,6 +50,29 @@
             <p class="briefing-body" id="briefing-text"></p>
           </section>
 
+          <section class="card notify-card" id="notify-card">
+            <p class="notify-title">🔔 Browser notifications</p>
+            <p class="muted small" id="notify-status">Status: not requested</p>
+            <div class="notify-actions">
+              <button type="button" class="btn btn-primary btn-small" id="btn-enable-notify">Enable alerts</button>
+              <label class="notify-toggle">
+                <input type="checkbox" id="notify-assignments" checked />
+                <span>Assignment deadlines</span>
+              </label>
+              <label class="notify-toggle">
+                <input type="checkbox" id="notify-classes" checked />
+                <span>Class starts (~30 min before)</span>
+              </label>
+              <label class="notify-toggle">
+                <input type="checkbox" id="notify-reminders" checked />
+                <span>Scheduled reminders</span>
+              </label>
+            </div>
+            <p class="muted tiny footnote-inline">
+              Alerts run while this tab or the app is open. For alerts when the browser is closed, add the app to your home screen (mobile) or use a future push setup.
+            </p>
+          </section>
+
           <nav class="quick-actions" aria-label="Quick actions">
             <button type="button" class="qa-btn" data-go="schedule">
               <span class="qa-icon" style="--qa-bg: var(--accent-bg); --qa-fg: var(--primary)">📅</span>
@@ -57,9 +82,9 @@
               <span class="qa-icon" style="--qa-bg: var(--emerald-bg); --qa-fg: var(--success)">✅</span>
               <span class="qa-label">Tasks</span>
             </button>
-            <button type="button" class="qa-btn" data-go="stats" title="Progress &amp; future social">
+            <button type="button" class="qa-btn" data-go="rooms" title="Video study rooms">
               <span class="qa-icon" style="--qa-bg: var(--coral-bg); --qa-fg: var(--secondary)">👥</span>
-              <span class="qa-label">Buddies</span>
+              <span class="qa-label">Rooms</span>
             </button>
             <button type="button" class="qa-btn" data-go="focus">
               <span class="qa-icon" style="--qa-bg: var(--accent-bg); --qa-fg: var(--primary)">⏱️</span>
@@ -84,9 +109,16 @@
           <div class="section-head">
             <h2>Reminders</h2>
           </div>
-          <form class="inline-form" id="form-reminder">
-            <input name="text" type="text" placeholder="Remind me to…" maxlength="200" required />
-            <button type="submit" class="btn btn-small btn-primary">Add</button>
+          <form class="stack-form stack-form--tight" id="form-reminder">
+            <label>
+              <span class="field-label">Reminder</span>
+              <input name="text" type="text" placeholder="Remind me to…" maxlength="200" required />
+            </label>
+            <label>
+              <span class="field-label">Notify at (optional)</span>
+              <input name="notifyAt" type="datetime-local" />
+            </label>
+            <button type="submit" class="btn btn-small btn-primary">Add reminder</button>
           </form>
           <ul class="reminder-list" id="reminder-list"></ul>
         </section>
@@ -179,6 +211,26 @@
           </div>
         </section>
 
+        <!-- STUDY ROOMS (Jitsi) -->
+        <section class="view" id="view-rooms" data-view="rooms" aria-label="Study rooms" hidden>
+          <div class="view-title">
+            <h2>Study rooms</h2>
+            <p class="muted small">Video &amp; chat via Jitsi — share the room name with classmates.</p>
+          </div>
+          <div class="card room-card">
+            <label>
+              <span class="field-label">Room name</span>
+              <input type="text" id="room-name" maxlength="40" placeholder="e.g. stats-review-monday" autocomplete="off" />
+            </label>
+            <p class="muted tiny">Letters, numbers, and hyphens only. Same name = same room.</p>
+            <div class="room-actions">
+              <button type="button" class="btn btn-primary" id="btn-join-room">Join room</button>
+              <button type="button" class="btn btn-ghost" id="btn-random-room">Random name</button>
+            </div>
+            <button type="button" class="link like-btn" id="btn-copy-room">Copy invite link</button>
+          </div>
+        </section>
+
         <!-- STATS (dashboard metrics) -->
         <section class="view" id="view-stats" data-view="stats" aria-label="Stats" hidden>
           <div class="view-title">
@@ -205,6 +257,22 @@
         </section>
       </main>
 
+      <div class="room-modal" id="room-modal" hidden aria-hidden="true">
+        <div class="room-modal-backdrop" id="room-modal-backdrop"></div>
+        <div class="room-modal-panel" role="dialog" aria-labelledby="room-modal-title">
+          <div class="room-modal-head">
+            <h2 id="room-modal-title">Study room</h2>
+            <button type="button" class="btn-icon" id="room-modal-close" aria-label="Close">×</button>
+          </div>
+          <iframe
+            class="room-iframe"
+            id="room-iframe"
+            title="Jitsi Meet study room"
+            allow="camera; microphone; fullscreen; display-capture; autoplay"
+          ></iframe>
+        </div>
+      </div>
+
       <button type="button" class="fab" id="fab" aria-label="Add assignment">+</button>
 
       <nav class="bottom-nav" aria-label="Main">
@@ -214,6 +282,7 @@
         <button type="button" class="nav-item" data-view="schedule"><span class="nav-ico">📅</span><span>Schedule</span></button>
         <button type="button" class="nav-item" data-view="assignments"><span class="nav-ico">📋</span><span>Tasks</span></button>
         <button type="button" class="nav-item" data-view="focus"><span class="nav-ico">⏱️</span><span>Focus</span></button>
+        <button type="button" class="nav-item" data-view="rooms"><span class="nav-ico">🎥</span><span>Rooms</span></button>
         <button type="button" class="nav-item" data-view="stats"><span class="nav-ico">📊</span><span>Stats</span></button>
       </nav>
     </div>
