@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Study Buddy</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="status-bar" aria-hidden="true">
+        <span class="status-time">9:41</span>
+      </header>
+
+      <main class="content">
+        <section class="card header-card">
+          <div class="header-text">
+            <h1>👋 Good morning, Sarah!</h1>
+            <p class="muted">Psychology Major · Week 8</p>
+          </div>
+          <div class="streak" title="Day streak">
+            <span class="streak-emoji" aria-hidden="true">🔥</span>
+            <span class="streak-num">12</span>
+          </div>
+        </section>
+
+        <section class="card alert-card" role="status">
+          <div class="alert-inner">
+            <p class="alert-title">⚠️ Priority Week Alert</p>
+            <p class="muted small">3 assignments due · Stats exam in 5 days</p>
+          </div>
+          <span class="chevron" aria-hidden="true">›</span>
+        </section>
+
+        <nav class="quick-actions" aria-label="Quick actions">
+          <button type="button" class="qa-btn">
+            <span class="qa-icon" style="--qa-bg: var(--accent-bg); --qa-fg: var(--primary)">📅</span>
+            <span class="qa-label">Timetable</span>
+          </button>
+          <button type="button" class="qa-btn">
+            <span class="qa-icon" style="--qa-bg: var(--emerald-bg); --qa-fg: var(--success)">✅</span>
+            <span class="qa-label">Tasks</span>
+          </button>
+          <button type="button" class="qa-btn">
+            <span class="qa-icon" style="--qa-bg: var(--coral-bg); --qa-fg: var(--secondary)">👥</span>
+            <span class="qa-label">Buddies</span>
+          </button>
+          <button type="button" class="qa-btn">
+            <span class="qa-icon" style="--qa-bg: var(--accent-bg); --qa-fg: var(--primary)">⏱️</span>
+            <span class="qa-label">Focus</span>
+          </button>
+        </nav>
+
+        <section class="section-head">
+          <h2>Today’s Schedule</h2>
+          <a href="#" class="link">See All ›</a>
+        </section>
+
+        <ul class="schedule-list">
+          <li class="schedule-card">
+            <span class="schedule-bar" style="--bar: var(--primary)"></span>
+            <div class="schedule-body">
+              <p class="muted tiny">9:00 AM</p>
+              <p class="schedule-title">Research Methods</p>
+              <p class="muted tiny">Lecture · Room 302</p>
+            </div>
+            <span class="badge muted">2 hrs</span>
+          </li>
+          <li class="schedule-card">
+            <span class="schedule-bar" style="--bar: var(--success)"></span>
+            <div class="schedule-body">
+              <p class="muted tiny">11:30 AM</p>
+              <p class="schedule-title">Study Session</p>
+              <p class="muted tiny">with Alex · Library</p>
+            </div>
+            <span class="badge muted">1.5 hrs</span>
+          </li>
+          <li class="schedule-card">
+            <span class="schedule-bar" style="--bar: var(--secondary)"></span>
+            <div class="schedule-body">
+              <p class="muted tiny">2:00 PM</p>
+              <p class="schedule-title">Stats Assignment</p>
+              <p class="muted tiny">Due tomorrow!</p>
+            </div>
+            <span class="badge warn">High Priority</span>
+          </li>
+        </ul>
+
+        <section class="section-head">
+          <h2>Assignment Progress</h2>
+          <a href="#" class="link">+ Add ›</a>
+        </section>
+
+        <div class="progress-row">
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="ring-bg" cx="32" cy="32" r="26" />
+              <circle class="ring-fill" cx="32" cy="32" r="26" style="--p: 0.75; --c: var(--secondary)" />
+            </svg>
+            <span class="ring-pct" style="color: var(--secondary)">75%</span>
+            <p class="ring-label">Stats HW</p>
+          </div>
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="ring-bg" cx="32" cy="32" r="26" />
+              <circle class="ring-fill" cx="32" cy="32" r="26" style="--p: 0.3; --c: var(--primary)" />
+            </svg>
+            <span class="ring-pct" style="color: var(--primary)">30%</span>
+            <p class="ring-label">Psych Essay</p>
+          </div>
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="ring-bg" cx="32" cy="32" r="26" />
+              <circle class="ring-fill" cx="32" cy="32" r="26" style="--p: 0.9; --c: var(--success)" />
+            </svg>
+            <span class="ring-pct" style="color: var(--success)">90%</span>
+            <p class="ring-label">Bio Lab</p>
+          </div>
+        </div>
+      </main>
+
+      <button type="button" class="fab" aria-label="Add">+</button>
+
+      <nav class="bottom-nav" aria-label="Main">
+        <a href="#" class="nav-item active" aria-current="page"><span class="nav-ico">🏠</span><span>Home</span></a>
+        <a href="#" class="nav-item"><span class="nav-ico">📅</span><span>Schedule</span></a>
+        <a href="#" class="nav-item"><span class="nav-ico">👥</span><span>Buddies</span></a>
+        <a href="#" class="nav-item"><span class="nav-ico">📊</span><span>Stats</span></a>
+      </nav>
+    </div>
+    <script src="app.js" defer></script>
+  </body>
+</html>
