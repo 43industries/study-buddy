@@ -22,6 +22,8 @@
         bio: "Getting ready for exam season.",
         unit: "PSYC201",
         avatar: "",
+        units: [],
+        qaBank: [],
       },
       streak: 0,
       lastStreakDate: null,
@@ -215,12 +217,15 @@
     const rings = document.getElementById("progress-rings");
     const assignEmpty = document.getElementById("assignments-empty");
     const reminderList = document.getElementById("reminder-list");
+    const prepList = document.getElementById("prep-plan-list");
+    const prepEmpty = document.getElementById("prep-plan-empty");
 
     if (g) g.textContent = greeting();
     if (pl) {
       const suffix = currentUser?.email ? ` · ${currentUser.email}` : "";
       const major = state.profile.major || "Undeclared";
-      const unit = state.profile.unit ? ` · Unit: ${state.profile.unit}` : "";
+      const primaryUnit = state.profile.unit || state.profile.units?.[0]?.code || "";
+      const unit = primaryUnit ? ` · Unit: ${primaryUnit}` : "";
       pl.textContent = `${major} · Week ${state.profile.week}${unit}${suffix}`;
     }
     if (pb) pb.textContent = state.profile.bio || "";
@@ -334,6 +339,44 @@
           renderHome();
         });
       });
+    }
+
+    if (prepList && prepEmpty) {
+      prepList.innerHTML = "";
+      const assessments = (state.profile.units || [])
+        .flatMap((u) =>
+          (u.assessments || []).map((a) => ({
+            unitCode: u.code,
+            unitName: u.name,
+            ...a,
+            days: daysUntil(a.date),
+          }))
+        )
+        .filter((a) => a.days >= 0)
+        .sort((a, b) => a.days - b.days)
+        .slice(0, 6);
+
+      if (!assessments.length) {
+        prepEmpty.hidden = false;
+      } else {
+        prepEmpty.hidden = true;
+        assessments.forEach((a) => {
+          const li = document.createElement("li");
+          li.className = "assignment-item";
+          const d = a.days;
+          const when = d === 0 ? "Today" : d === 1 ? "Tomorrow" : `In ${d} days`;
+          const dailyMins = d <= 2 ? 90 : d <= 7 ? 60 : 40;
+          const tasks = d <= 2 ? "Past papers + timed drills" : "Content review + active recall";
+          li.innerHTML = `
+            <div class="assignment-main">
+              <span class="unit-code-pill">${escapeHtml(a.unitCode)} · ${a.type.toUpperCase()}</span>
+              <p class="assignment-title">${escapeHtml(a.unitName || a.unitCode)} — ${escapeHtml(when)}</p>
+              <p class="muted small">Prep target: ${dailyMins} mins/day · ${escapeHtml(tasks)}</p>
+              <p class="muted tiny">${escapeHtml(a.topics || "No topics added yet.")}</p>
+            </div>`;
+          prepList.appendChild(li);
+        });
+      }
     }
   }
 
@@ -776,6 +819,124 @@
     el.classList.toggle("error", Boolean(isError));
   }
 
+  function setUnitMessage(msg, isError = false) {
+    const el = document.getElementById("unit-message");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("error", Boolean(isError));
+  }
+
+  function setQaMessage(msg, isError = false) {
+    const el = document.getElementById("qa-message");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("error", Boolean(isError));
+  }
+
+  function upcomingAssessmentsForUnit(unit) {
+    return (unit.assessments || [])
+      .map((a) => ({ ...a, days: daysUntil(a.date) }))
+      .filter((a) => a.days >= 0)
+      .sort((a, b) => a.days - b.days);
+  }
+
+  function generateQaForUnit(unit) {
+    const upcoming = upcomingAssessmentsForUnit(unit);
+    const next = upcoming[0];
+    const assessmentType = next?.type || "exam";
+    const topics = String(next?.topics || "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    const focus = topics.length ? topics : ["core concepts", "key theories", "applied examples"];
+    const typeLabel = assessmentType.toUpperCase();
+
+    const items = [];
+    focus.forEach((topic) => {
+      items.push({
+        q: `Define and explain ${topic} in ${unit.code}.`,
+        a: `${topic} is a key concept in ${unit.name || unit.code}. In your answer, define it, explain why it matters, and link it to one example from class.`,
+      });
+      items.push({
+        q: `How can ${topic} be applied in a real scenario?`,
+        a: `Use a 3-step structure: context, method, and outcome. Show how ${topic} changes decisions/results in a realistic case study.`,
+      });
+    });
+
+    items.push({
+      q: `${typeLabel} strategy: what should you prioritize if you have 10 minutes per question?`,
+      a: `Start with the command word, give a direct thesis in line 1, then provide 2-3 evidence points and a concise conclusion.`,
+    });
+    items.push({
+      q: `What are common mistakes in ${unit.code} ${typeLabel} answers and how do you avoid them?`,
+      a: `Common issues: vague definitions, no examples, weak structure. Avoid by using keywords, one concrete example, and short evaluative statements.`,
+    });
+
+    return items.slice(0, 8);
+  }
+
+  function refreshQaUnitOptions() {
+    const select = document.getElementById("qa-unit-select");
+    if (!select) return;
+    const units = state.profile.units || [];
+    const previous = select.value;
+    select.innerHTML = "";
+    units.forEach((u) => {
+      const opt = document.createElement("option");
+      opt.value = u.code;
+      opt.textContent = `${u.code}${u.name ? " — " + u.name : ""}`;
+      select.appendChild(opt);
+    });
+    if (previous && units.some((u) => u.code === previous)) select.value = previous;
+  }
+
+  function renderQaBank() {
+    const list = document.getElementById("qa-list");
+    const empty = document.getElementById("qa-empty");
+    if (!list || !empty) return;
+    list.innerHTML = "";
+    const qa = state.profile.qaBank || [];
+    if (!qa.length) {
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+    qa.forEach((item, idx) => {
+      const li = document.createElement("li");
+      li.className = "assignment-item";
+      li.innerHTML = `
+        <div class="assignment-main">
+          <span class="unit-code-pill">Q${idx + 1}</span>
+          <p class="assignment-title">${escapeHtml(item.q)}</p>
+          <p class="muted small">${escapeHtml(item.a)}</p>
+        </div>`;
+      list.appendChild(li);
+    });
+  }
+
+  function bindQaForm() {
+    const form = document.getElementById("qa-form");
+    if (!form) return;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const unitCode = String(fd.get("unitCode") || "").trim();
+      const unit = (state.profile.units || []).find((u) => u.code === unitCode);
+      if (!unit) {
+        setQaMessage("Select a valid unit first.", true);
+        return;
+      }
+      const questions = generateQaForUnit(unit);
+      state.profile.qaBank = questions;
+      save();
+      renderQaBank();
+      const next = upcomingAssessmentsForUnit(unit)[0];
+      const when = next ? ` Next ${next.type.toUpperCase()} in ${Math.max(0, next.days)} day(s).` : "";
+      setQaMessage(`Generated ${questions.length} practice Q&A for ${unit.code}.${when}`);
+    });
+  }
+
   function syncProfileForm() {
     const form = document.getElementById("profile-form");
     if (!form) return;
@@ -810,6 +971,8 @@
         unit: String(fd.get("unit") || "").trim(),
         week: Number.isFinite(week) ? Math.max(1, Math.min(52, week)) : 1,
         avatar: state.profile.avatar || "",
+        units: state.profile.units || [],
+        qaBank: state.profile.qaBank || [],
       };
 
       const avatarFile = fd.get("avatar");
@@ -834,6 +997,116 @@
     });
   }
 
+  function normalizeUnitCode(raw) {
+    return String(raw || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+  }
+
+  function renderUnitManager() {
+    const list = document.getElementById("unit-list");
+    if (!list) return;
+    list.innerHTML = "";
+    const units = state.profile.units || [];
+    if (!units.length) return;
+
+    units.forEach((u) => {
+      const li = document.createElement("li");
+      li.className = "assignment-item";
+      const assHtml = (u.assessments || [])
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((a) => {
+          const d = daysUntil(a.date);
+          const when = d < 0 ? "Past" : d === 0 ? "Today" : d === 1 ? "Tomorrow" : `In ${d} days`;
+          return `<p class="muted small">${a.type.toUpperCase()} · ${a.date} · ${when} <button type="button" class="btn-icon" data-assess-del="${u.id}:${a.id}" aria-label="Remove assessment">×</button></p>`;
+        })
+        .join("");
+      li.innerHTML = `
+        <div class="assignment-main">
+          <span class="unit-code-pill">${escapeHtml(u.code)}</span>
+          <p class="assignment-title">${escapeHtml(u.name || u.code)}</p>
+          ${assHtml || '<p class="muted small">No assessments yet.</p>'}
+        </div>
+        <button type="button" class="btn-icon" data-unit-del="${u.id}" aria-label="Remove unit">×</button>
+      `;
+      list.appendChild(li);
+    });
+
+    list.querySelectorAll("[data-unit-del]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const unitId = btn.getAttribute("data-unit-del");
+        state.profile.units = (state.profile.units || []).filter((u) => u.id !== unitId);
+        if (state.profile.unit && !state.profile.units.some((u) => u.code === state.profile.unit)) {
+          state.profile.unit = state.profile.units[0]?.code || "";
+        }
+        save();
+        renderUnitManager();
+        renderHome();
+        syncProfileForm();
+      });
+    });
+
+    list.querySelectorAll("[data-assess-del]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const raw = btn.getAttribute("data-assess-del") || "";
+        const [unitId, assessId] = raw.split(":");
+        const unit = (state.profile.units || []).find((u) => u.id === unitId);
+        if (!unit) return;
+        unit.assessments = (unit.assessments || []).filter((a) => a.id !== assessId);
+        save();
+        renderUnitManager();
+        renderHome();
+      });
+    });
+  }
+
+  function bindUnitForm() {
+    const form = document.getElementById("unit-form");
+    if (!form) return;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const code = normalizeUnitCode(fd.get("unitCode"));
+      const name = String(fd.get("unitName") || "").trim();
+      const type = String(fd.get("assessmentType") || "exam").toLowerCase() === "cat" ? "cat" : "exam";
+      const date = String(fd.get("assessmentDate") || "");
+      const topics = String(fd.get("topics") || "").trim();
+
+      if (!code) {
+        setUnitMessage("Unit code is required.", true);
+        return;
+      }
+      if (!date) {
+        setUnitMessage("Assessment date is required.", true);
+        return;
+      }
+
+      state.profile.units = state.profile.units || [];
+      let unit = state.profile.units.find((u) => u.code === code);
+      if (!unit) {
+        if (state.profile.units.length >= 7) {
+          setUnitMessage("You can only add up to 7 units.", true);
+          return;
+        }
+        unit = { id: id(), code, name: name || code, assessments: [] };
+        state.profile.units.push(unit);
+      } else if (name) {
+        unit.name = name;
+      }
+
+      unit.assessments = unit.assessments || [];
+      unit.assessments.push({ id: id(), type, date, topics });
+      if (!state.profile.unit) state.profile.unit = code;
+      save();
+      form.reset();
+      setUnitMessage("Assessment added.");
+      renderUnitManager();
+      renderHome();
+      syncProfileForm();
+    });
+  }
+
   function renderAll() {
     updateStreak();
     ensureWeekStats();
@@ -843,6 +1116,9 @@
     renderStats();
     updateNotifyUI();
     syncProfileForm();
+    renderUnitManager();
+    refreshQaUnitOptions();
+    renderQaBank();
   }
 
   function bindAuthForms() {
@@ -913,6 +1189,8 @@
   /** Init */
   bindAuthForms();
   bindProfileForm();
+  bindUnitForm();
+  bindQaForm();
   bindPomodoro();
   bindNotifyUI();
   bindRooms();

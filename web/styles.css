@@ -699,6 +699,18 @@ body {
   color: var(--text-light);
 }
 
+.unit-code-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
 .footnote {
   margin-top: 16px;
   line-height: 1.5;

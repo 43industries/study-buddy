@@ -162,6 +162,28 @@
             <button type="submit" class="btn btn-small btn-primary">Add reminder</button>
           </form>
           <ul class="reminder-list" id="reminder-list"></ul>
+
+          <div class="section-head">
+            <h2>Exam & CAT prep</h2>
+          </div>
+          <ul class="assignment-list" id="prep-plan-list"></ul>
+          <p class="empty-hint" id="prep-plan-empty" hidden>Add unit assessments in Stats to get prep guidance.</p>
+
+          <div class="section-head">
+            <h2>Exam Q&A practice</h2>
+          </div>
+          <div class="card">
+            <form class="stack-form stack-form--tight" id="qa-form">
+              <label>
+                <span class="field-label">Unit</span>
+                <select name="unitCode" id="qa-unit-select"></select>
+              </label>
+              <button type="submit" class="btn btn-primary">Generate likely questions</button>
+            </form>
+            <p class="auth-message" id="qa-message"></p>
+            <ul class="assignment-list" id="qa-list"></ul>
+            <p class="empty-hint" id="qa-empty" hidden>Add units with assessments to generate Q&A.</p>
+          </div>
         </section>
 
         <!-- SCHEDULE -->
@@ -310,6 +332,44 @@
               <button type="submit" class="btn btn-primary">Save profile</button>
             </form>
             <p class="auth-message" id="profile-message"></p>
+          </div>
+          <div class="card">
+            <div class="section-head">
+              <h2>Units & Assessments</h2>
+            </div>
+            <p class="muted small">Up to 7 units per user. Add Exam/CAT dates to auto-generate prep plans.</p>
+            <form class="stack-form stack-form--tight" id="unit-form">
+              <div class="row-2">
+                <label>
+                  <span class="field-label">Unit code</span>
+                  <input type="text" name="unitCode" maxlength="16" placeholder="PSYC201" required />
+                </label>
+                <label>
+                  <span class="field-label">Assessment type</span>
+                  <select name="assessmentType" required>
+                    <option value="exam">Exam</option>
+                    <option value="cat">CAT</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span class="field-label">Unit name</span>
+                <input type="text" name="unitName" maxlength="80" placeholder="Research Methods" />
+              </label>
+              <div class="row-2">
+                <label>
+                  <span class="field-label">Assessment date</span>
+                  <input type="date" name="assessmentDate" required />
+                </label>
+                <label>
+                  <span class="field-label">Topics (optional)</span>
+                  <input type="text" name="topics" maxlength="120" placeholder="Week 1-8, key theories" />
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary">Add assessment</button>
+            </form>
+            <p class="auth-message" id="unit-message"></p>
+            <ul class="assignment-list" id="unit-list"></ul>
           </div>
           <ul class="metrics-list">
             <li class="metric-card">
