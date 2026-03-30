@@ -19,7 +19,7 @@
           <h1>Study Buddy</h1>
           <p class="muted small">Sign in to load your personal dashboard.</p>
           <p class="muted small" id="auth-config-warning" hidden>
-            Auth is not configured yet. Add Supabase keys in `web/auth-config.js`.
+            Auth is not configured yet. Set Supabase keys in Netlify environment variables.
           </p>
           <form class="stack-form stack-form--tight" id="auth-signin-form">
             <label>
@@ -324,7 +324,7 @@
       </nav>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-config.js"></script>
+    <script src="/.netlify/functions/auth-config"></script>
     <script src="app.js" defer></script>
   </body>
 </html>

@@ -2,6 +2,9 @@
 [build]
   publish = "web"
 
+[functions]
+  directory = "netlify/functions"
+
 # Service worker should update when changed
 [[headers]]
   for = "/sw.js"

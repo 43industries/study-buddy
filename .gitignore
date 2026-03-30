@@ -7,3 +7,5 @@ __pycache__/
 venv/
 Thumbs.db
 Desktop.ini
+web/auth-config.js
+web/auth-config.local.js

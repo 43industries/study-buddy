@@ -802,7 +802,7 @@
     if (!supabase) {
       setUser(null);
       renderAll();
-      setAuthMessage("Connect Supabase in web/auth-config.js to enable personal accounts.");
+      setAuthMessage("Set SUPABASE_URL and SUPABASE_ANON_KEY in Netlify environment variables.");
       updateAuthUi();
       return;
     }
