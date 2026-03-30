@@ -1,5 +1,5 @@
 (() => {
-  const STORAGE_KEY = "studyBuddy.v1";
+  const STORAGE_PREFIX = "studyBuddy.v2.user.";
   const RING_R = 26;
 
   const quotes = [
@@ -30,9 +30,34 @@
     };
   }
 
-  function loadState() {
+  let currentUser = null;
+  let storageKey = STORAGE_PREFIX + "anonymous";
+
+  function getSupabaseConfig() {
+    const cfg = window.STUDY_BUDDY_AUTH || {};
+    const url = cfg.supabaseUrl || window.STUDY_BUDDY_SUPABASE_URL || "";
+    const key = cfg.supabaseAnonKey || window.STUDY_BUDDY_SUPABASE_ANON_KEY || "";
+    return { url, key };
+  }
+
+  function hasAuthConfig() {
+    const { url, key } = getSupabaseConfig();
+    return Boolean(url && key && window.supabase?.createClient);
+  }
+
+  let supabase = null;
+  if (hasAuthConfig()) {
+    const { url, key } = getSupabaseConfig();
+    supabase = window.supabase.createClient(url, key);
+  }
+
+  function computeStorageKey(user) {
+    return STORAGE_PREFIX + (user?.id || "anonymous");
+  }
+
+  function loadStateForCurrentUser() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKey);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
       return {
@@ -47,10 +72,45 @@
     }
   }
 
-  let state = loadState();
+  let state = defaultState();
 
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  }
+
+  function setUser(user) {
+    currentUser = user || null;
+    storageKey = computeStorageKey(currentUser);
+    state = loadStateForCurrentUser();
+  }
+
+  function setAuthMessage(msg, isError = false) {
+    const el = document.getElementById("auth-message");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("error", Boolean(isError));
+  }
+
+  function updateAuthUi() {
+    const overlay = document.getElementById("auth-overlay");
+    const logout = document.getElementById("btn-logout");
+    const chip = document.getElementById("auth-user-chip");
+    const warning = document.getElementById("auth-config-warning");
+    if (!overlay || !logout || !chip || !warning) return;
+
+    if (!supabase) {
+      overlay.hidden = false;
+      warning.hidden = false;
+      chip.textContent = "Auth not configured";
+      logout.hidden = true;
+      return;
+    }
+
+    warning.hidden = true;
+    const signedIn = Boolean(currentUser);
+    overlay.hidden = signedIn;
+    logout.hidden = !signedIn;
+    chip.textContent = signedIn ? currentUser.email : "Signed out";
   }
 
   function todayStr() {
@@ -148,7 +208,10 @@
     const reminderList = document.getElementById("reminder-list");
 
     if (g) g.textContent = greeting();
-    if (pl) pl.textContent = `${state.profile.major} · Week ${state.profile.week}`;
+    if (pl) {
+      const suffix = currentUser?.email ? ` · ${currentUser.email}` : "";
+      pl.textContent = `${state.profile.major} · Week ${state.profile.week}${suffix}`;
+    }
     if (streakEl) streakEl.textContent = String(state.streak);
     if (quoteEl) quoteEl.textContent = dailyQuote();
 
@@ -683,21 +746,91 @@
     el.textContent = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
-  /** Init */
-  updateStreak();
-  ensureWeekStats();
-  renderHome();
-  renderSchedule();
-  renderAssignments();
-  renderStats();
-  bindPomodoro();
-  updateClock();
-  setInterval(updateClock, 30000);
+  function renderAll() {
+    updateStreak();
+    ensureWeekStats();
+    renderHome();
+    renderSchedule();
+    renderAssignments();
+    renderStats();
+    updateNotifyUI();
+  }
 
+  function bindAuthForms() {
+    const signin = document.getElementById("auth-signin-form");
+    const signup = document.getElementById("auth-signup-form");
+    const logout = document.getElementById("btn-logout");
+
+    signin?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!supabase) return;
+      const fd = new FormData(e.target);
+      const email = String(fd.get("email") || "").trim();
+      const password = String(fd.get("password") || "");
+      setAuthMessage("Logging in...");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setAuthMessage(error.message, true);
+        return;
+      }
+      setAuthMessage("");
+    });
+
+    signup?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!supabase) return;
+      const fd = new FormData(e.target);
+      const email = String(fd.get("email") || "").trim();
+      const password = String(fd.get("password") || "");
+      setAuthMessage("Creating account...");
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        setAuthMessage(error.message, true);
+        return;
+      }
+      setAuthMessage("Account created. Check your email for confirmation (if required).");
+    });
+
+    logout?.addEventListener("click", async () => {
+      if (!supabase) return;
+      await supabase.auth.signOut();
+      setAuthMessage("Signed out.");
+    });
+  }
+
+  async function initAuth() {
+    if (!supabase) {
+      setUser(null);
+      renderAll();
+      setAuthMessage("Connect Supabase in web/auth-config.js to enable personal accounts.");
+      updateAuthUi();
+      return;
+    }
+    const { data, error } = await supabase.auth.getSession();
+    if (error) setAuthMessage(error.message, true);
+    const user = data?.session?.user || null;
+    setUser(user);
+    updateAuthUi();
+    renderAll();
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      updateAuthUi();
+      renderAll();
+      showView("home");
+    });
+  }
+
+  /** Init */
+  bindAuthForms();
+  bindPomodoro();
   bindNotifyUI();
   bindRooms();
+  updateClock();
+  setInterval(updateClock, 30000);
   setInterval(runNotificationScan, 45 * 1000);
   runNotificationScan();
+  initAuth();
 
   document.querySelectorAll(".bottom-nav .nav-item").forEach((btn) => {
     btn.addEventListener("click", () => showView(btn.dataset.view));

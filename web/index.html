@@ -14,8 +14,45 @@
   </head>
   <body>
     <div class="app">
-      <header class="status-bar" aria-hidden="true">
+      <section class="auth-overlay" id="auth-overlay">
+        <div class="auth-card">
+          <h1>Study Buddy</h1>
+          <p class="muted small">Sign in to load your personal dashboard.</p>
+          <p class="muted small" id="auth-config-warning" hidden>
+            Auth is not configured yet. Add Supabase keys in `web/auth-config.js`.
+          </p>
+          <form class="stack-form stack-form--tight" id="auth-signin-form">
+            <label>
+              <span class="field-label">Email</span>
+              <input type="email" name="email" required autocomplete="email" />
+            </label>
+            <label>
+              <span class="field-label">Password</span>
+              <input type="password" name="password" required minlength="6" autocomplete="current-password" />
+            </label>
+            <button type="submit" class="btn btn-primary">Log in</button>
+          </form>
+          <hr class="auth-divider" />
+          <form class="stack-form stack-form--tight" id="auth-signup-form">
+            <label>
+              <span class="field-label">New email</span>
+              <input type="email" name="email" required autocomplete="email" />
+            </label>
+            <label>
+              <span class="field-label">New password</span>
+              <input type="password" name="password" required minlength="6" autocomplete="new-password" />
+            </label>
+            <button type="submit" class="btn btn-ghost">Create account</button>
+          </form>
+          <p class="auth-message" id="auth-message"></p>
+        </div>
+      </section>
+      <header class="status-bar">
         <span class="status-time" id="clock">9:41</span>
+        <div class="status-auth">
+          <span class="muted tiny" id="auth-user-chip">Guest</span>
+          <button type="button" class="btn-logout" id="btn-logout" hidden>Log out</button>
+        </div>
       </header>
 
       <main class="content">
@@ -286,6 +323,8 @@
         <button type="button" class="nav-item" data-view="stats"><span class="nav-ico">📊</span><span>Stats</span></button>
       </nav>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
     <script src="app.js" defer></script>
   </body>
 </html>
