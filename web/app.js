@@ -1,5 +1,6 @@
 (() => {
   const STORAGE_PREFIX = "studyBuddy.v2.user.";
+  const THEME_KEY = "studyBuddy.theme";
   const RING_R = 26;
 
   const quotes = [
@@ -802,6 +803,32 @@
     el.textContent = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  function applyTheme(theme) {
+    const t = theme === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    const btn = document.getElementById("btn-theme");
+    if (btn) btn.textContent = t === "light" ? "☀️" : "🌙";
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch (_) {}
+  }
+
+  function loadTheme() {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (_) {}
+    return "dark";
+  }
+
+  function bindThemeToggle() {
+    applyTheme(loadTheme());
+    document.getElementById("btn-theme")?.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      applyTheme(current === "dark" ? "light" : "dark");
+    });
+  }
+
   function fallbackAvatarDataUrl(name) {
     const initial = (name || "S").trim().charAt(0).toUpperCase() || "S";
     const svg =
@@ -1188,6 +1215,7 @@
 
   /** Init */
   bindAuthForms();
+  bindThemeToggle();
   bindProfileForm();
   bindUnitForm();
   bindQaForm();
