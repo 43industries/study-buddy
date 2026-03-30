@@ -59,9 +59,13 @@
         <!-- HOME -->
         <section class="view view--active" id="view-home" data-view="home" aria-label="Home">
           <section class="card header-card">
+            <div class="profile-avatar-wrap">
+              <img id="profile-avatar" class="profile-avatar" alt="Profile avatar" />
+            </div>
             <div class="header-text">
               <h1 id="greeting">👋 Good morning, Sarah!</h1>
-              <p class="muted" id="profile-line">Psychology Major · Week 8</p>
+              <p class="muted" id="profile-line">Psychology Major · Week 8 · Unit: PSYC201</p>
+              <p class="muted tiny" id="profile-bio">Getting ready for exam season.</p>
             </div>
             <div class="streak" title="Day streak">
               <span class="streak-emoji" aria-hidden="true">🔥</span>
@@ -273,6 +277,39 @@
           <div class="view-title">
             <h2>Progress</h2>
             <p class="muted small">MVP dashboard metrics</p>
+          </div>
+          <div class="card">
+            <div class="section-head">
+              <h2>Profile</h2>
+            </div>
+            <form class="stack-form stack-form--tight" id="profile-form">
+              <label>
+                <span class="field-label">Name</span>
+                <input type="text" name="name" maxlength="50" required />
+              </label>
+              <label>
+                <span class="field-label">Bio</span>
+                <input type="text" name="bio" maxlength="120" placeholder="Tell your study buddies about you" />
+              </label>
+              <label>
+                <span class="field-label">Major</span>
+                <input type="text" name="major" maxlength="60" placeholder="Psychology Major" />
+              </label>
+              <label>
+                <span class="field-label">Current unit</span>
+                <input type="text" name="unit" maxlength="30" placeholder="PSYC201" />
+              </label>
+              <label>
+                <span class="field-label">Current week</span>
+                <input type="number" name="week" min="1" max="52" value="8" />
+              </label>
+              <label>
+                <span class="field-label">Profile picture</span>
+                <input type="file" name="avatar" accept="image/*" />
+              </label>
+              <button type="submit" class="btn btn-primary">Save profile</button>
+            </form>
+            <p class="auth-message" id="profile-message"></p>
           </div>
           <ul class="metrics-list">
             <li class="metric-card">

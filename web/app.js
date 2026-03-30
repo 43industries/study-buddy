@@ -15,7 +15,14 @@
 
   function defaultState() {
     return {
-      profile: { name: "Sarah", major: "Psychology Major", week: 8 },
+      profile: {
+        name: "Sarah",
+        major: "Psychology Major",
+        week: 8,
+        bio: "Getting ready for exam season.",
+        unit: "PSYC201",
+        avatar: "",
+      },
       streak: 0,
       lastStreakDate: null,
       timetable: [],
@@ -196,6 +203,8 @@
   function renderHome() {
     const g = document.getElementById("greeting");
     const pl = document.getElementById("profile-line");
+    const pb = document.getElementById("profile-bio");
+    const avatar = document.getElementById("profile-avatar");
     const streakEl = document.getElementById("streak-num");
     const quoteEl = document.getElementById("daily-quote");
     const briefing = document.getElementById("briefing-text");
@@ -210,8 +219,12 @@
     if (g) g.textContent = greeting();
     if (pl) {
       const suffix = currentUser?.email ? ` · ${currentUser.email}` : "";
-      pl.textContent = `${state.profile.major} · Week ${state.profile.week}${suffix}`;
+      const major = state.profile.major || "Undeclared";
+      const unit = state.profile.unit ? ` · Unit: ${state.profile.unit}` : "";
+      pl.textContent = `${major} · Week ${state.profile.week}${unit}${suffix}`;
     }
+    if (pb) pb.textContent = state.profile.bio || "";
+    if (avatar) avatar.src = state.profile.avatar || fallbackAvatarDataUrl(state.profile.name);
     if (streakEl) streakEl.textContent = String(state.streak);
     if (quoteEl) quoteEl.textContent = dailyQuote();
 
@@ -746,6 +759,81 @@
     el.textContent = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  function fallbackAvatarDataUrl(name) {
+    const initial = (name || "S").trim().charAt(0).toUpperCase() || "S";
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88">` +
+      `<rect width="100%" height="100%" fill="#27272a"/>` +
+      `<text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="38" fill="#f4f4f5" font-family="sans-serif">${initial}</text>` +
+      `</svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
+  function setProfileMessage(msg, isError = false) {
+    const el = document.getElementById("profile-message");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("error", Boolean(isError));
+  }
+
+  function syncProfileForm() {
+    const form = document.getElementById("profile-form");
+    if (!form) return;
+    form.elements.namedItem("name").value = state.profile.name || "";
+    form.elements.namedItem("bio").value = state.profile.bio || "";
+    form.elements.namedItem("major").value = state.profile.major || "";
+    form.elements.namedItem("unit").value = state.profile.unit || "";
+    form.elements.namedItem("week").value = String(state.profile.week || 1);
+    form.elements.namedItem("avatar").value = "";
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Failed to read image."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function bindProfileForm() {
+    const form = document.getElementById("profile-form");
+    if (!form) return;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const week = Number(fd.get("week") || 1);
+      const next = {
+        name: String(fd.get("name") || "").trim() || "Student",
+        bio: String(fd.get("bio") || "").trim(),
+        major: String(fd.get("major") || "").trim(),
+        unit: String(fd.get("unit") || "").trim(),
+        week: Number.isFinite(week) ? Math.max(1, Math.min(52, week)) : 1,
+        avatar: state.profile.avatar || "",
+      };
+
+      const avatarFile = fd.get("avatar");
+      if (avatarFile && typeof avatarFile === "object" && avatarFile.size > 0) {
+        if (avatarFile.size > 1_500_000) {
+          setProfileMessage("Image is too large. Keep it under 1.5MB.", true);
+          return;
+        }
+        try {
+          next.avatar = await fileToDataUrl(avatarFile);
+        } catch {
+          setProfileMessage("Could not process image. Try another file.", true);
+          return;
+        }
+      }
+
+      state.profile = next;
+      save();
+      syncProfileForm();
+      renderHome();
+      setProfileMessage("Profile saved.");
+    });
+  }
+
   function renderAll() {
     updateStreak();
     ensureWeekStats();
@@ -754,6 +842,7 @@
     renderAssignments();
     renderStats();
     updateNotifyUI();
+    syncProfileForm();
   }
 
   function bindAuthForms() {
@@ -823,6 +912,7 @@
 
   /** Init */
   bindAuthForms();
+  bindProfileForm();
   bindPomodoro();
   bindNotifyUI();
   bindRooms();
